@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sudoku</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#e9eef2;--panel:#f7fafc;--ink:#1c2733;--given:#1c2733;--user:#1f6fb2;--line:#b7c4cf;--box:#1c2733;--sel:#bfdcf3;--peer:#dde8f0;--same:#a9d0ee;--bad:#c23b3b;--badbg:#f6d6d6;--btn:#d3dde5;--accent:#1f6fb2;--accent-ink:#fff;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#10171e;--panel:#18222c;--ink:#e6edf3;--given:#e6edf3;--user:#6db3ec;--line:#34455464;--box:#8fa3b5;--sel:#27506f;--peer:#1f2e3b;--same:#2d5d83;--bad:#ff8b8b;--badbg:#4a2327;--btn:#25333f;--accent:#6db3ec;--accent-ink:#10171e}}
+:root[data-theme="dark"]{--bg:#10171e;--panel:#18222c;--ink:#e6edf3;--given:#e6edf3;--user:#6db3ec;--line:#34455464;--box:#8fa3b5;--sel:#27506f;--peer:#1f2e3b;--same:#2d5d83;--bad:#ff8b8b;--badbg:#4a2327;--btn:#25333f;--accent:#6db3ec;--accent-ink:#10171e}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Bricolage Grotesque",system-ui,-apple-system,"Segoe UI",sans-serif;display:flex;justify-content:center;min-height:100vh}
+main{width:100%;max-width:480px;padding:16px 14px 24px}
+header{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px}
+h1{font-size:28px;font-weight:800;margin:0;letter-spacing:-.02em}
+.stats{display:flex;gap:14px;font-size:14px;font-variant-numeric:tabular-nums}
+.stats b{font-weight:600}
+.levels{display:flex;gap:6px;margin-bottom:12px}
+.levels button{flex:1;padding:8px;border:0;border-radius:8px;background:var(--btn);color:var(--ink);font:inherit;font-size:14px;cursor:pointer}
+.levels button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);font-weight:600}
+#board{display:grid;grid-template-columns:repeat(9,1fr);aspect-ratio:1;background:var(--panel);border:2px solid var(--box);border-radius:4px;overflow:hidden;touch-action:manipulation}
+.c{position:relative;display:flex;align-items:center;justify-content:center;border:0;border-right:1px solid var(--line);border-bottom:1px solid var(--line);background:transparent;color:var(--user);font:inherit;font-size:clamp(18px,6.2vw,30px);font-weight:600;padding:0;cursor:pointer;min-width:0}
+.c.g{color:var(--given);font-weight:800}
+.c.r2,.c.r5{border-bottom:2px solid var(--box)}
+.c.k2,.c.k5{border-right:2px solid var(--box)}
+.c.k8{border-right:0}.c.r8{border-bottom:0}
+.c.p{background:var(--peer)}
+.c.s2{background:var(--same)}
+.c.s{background:var(--sel)}
+.c.bad{color:var(--bad);background:var(--badbg)}
+.c:focus-visible{outline:3px solid var(--accent);outline-offset:-3px;z-index:1}
+.n{display:grid;grid-template-columns:repeat(3,1fr);width:100%;height:100%;padding:2px;font-size:clamp(8px,2.4vw,12px);font-weight:400;color:var(--ink);opacity:.75;line-height:1}
+.n i{font-style:normal;display:flex;align-items:center;justify-content:center}
+.tools{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:12px 0 8px}
+.tools button,.pad button,.new{border:0;border-radius:8px;background:var(--btn);color:var(--ink);font:inherit;cursor:pointer}
+.tools button{padding:10px 4px;font-size:14px}
+.tools button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);font-weight:600}
+.pad{display:grid;grid-template-columns:repeat(9,1fr);gap:5px}
+.pad button{padding:8px 0 6px;font-size:22px;font-weight:600;display:flex;flex-direction:column;align-items:center;line-height:1.1}
+.pad small{font-size:10px;font-weight:400;opacity:.65}
+.pad button:disabled{opacity:.3;cursor:default}
+button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.new{width:100%;margin-top:12px;padding:12px;font-weight:600;background:var(--accent);color:var(--accent-ink)}
+#msg{min-height:22px;margin:10px 0 0;font-size:14px;text-align:center}
+.win{position:fixed;inset:0;background:rgba(10,16,22,.6);display:none;align-items:center;justify-content:center;padding:20px;z-index:5}
+.win.on{display:flex}
+.win div{background:var(--panel);border-radius:14px;padding:26px;max-width:320px;text-align:center}
+.win h2{margin:0 0 6px;font-size:26px}.win p{margin:0 0 16px}
+@media (prefers-reduced-motion:no-preference){.win.on div{animation:pop .25s ease-out}@keyframes pop{from{transform:scale(.92);opacity:0}}}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Sudoku</h1>
+    <div class="stats"><span>Time <b id="time">0:00</b></span><span>Mistakes <b id="miss">0</b></span></div>
+  </header>
+  <div class="levels" role="group" aria-label="Difficulty">
+    <button data-l="easy">Easy</button><button data-l="medium">Medium</button><button data-l="hard">Hard</button>
+  </div>
+  <div id="board" role="grid" aria-label="Sudoku board"></div>
+  <div class="tools">
+    <button id="undo">Undo</button>
+    <button id="notes" aria-pressed="false">Notes</button>
+    <button id="erase">Erase</button>
+    <button id="hint">Hint</button>
+  </div>
+  <div class="pad" id="pad"></div>
+  <p id="msg" aria-live="polite"></p>
+  <button class="new" id="new">New game</button>
+</main>
+<div class="win" id="win"><div><h2>Solved!</h2><p id="winTxt"></p><button class="new" id="again">Play again</button></div></div>
+<script>
+const CLUES={easy:40,medium32:0,medium:32,hard:26};
+let level='easy',G,sol,vals,notes,fixed,sel=0,noteMode=false,hist=[],mistakes=0,secs=0,timer,done=false;
+const $=s=>document.querySelector(s);
+const rowOf=i=>(i/9)|0,colOf=i=>i%9,boxOf=i=>((rowOf(i)/3)|0)*3+((colOf(i)/3)|0);
+const pop=m=>{let n=0;while(m){m&=m-1;n++}return n};
+const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
+
+function solve(g,limit,rand,out){
+  const r=Array(9).fill(0),c=Array(9).fill(0),b=Array(9).fill(0);
+  for(let i=0;i<81;i++)if(g[i]){const bit=1<<g[i];r[rowOf(i)]|=bit;c[colOf(i)]|=bit;b[boxOf(i)]|=bit}
+  let n=0;
+  (function rec(){
+    let best=-1,bm=0,bc=10;
+    for(let i=0;i<81;i++)if(!g[i]){
+      const m=~(r[rowOf(i)]|c[colOf(i)]|b[boxOf(i)])&0x3FE,k=pop(m);
+      if(k<bc){best=i;bm=m;bc=k;if(k===0)return}
+    }
+    if(best<0){n++;if(out)for(let i=0;i<81;i++)out[i]=g[i];return}
+    const ds=[1,2,3,4,5,6,7,8,9];if(rand)shuffle(ds);
+    const ro=rowOf(best),co=colOf(best),bo=boxOf(best);
+    for(const d of ds){
+      if(!(bm&(1<<d)))continue;
+      const bit=1<<d;g[best]=d;r[ro]|=bit;c[co]|=bit;b[bo]|=bit;
+      rec();
+      g[best]=0;r[ro]&=~bit;c[co]&=~bit;b[bo]&=~bit;
+      if(n>=limit)return;
+    }
+  })();
+  return n;
+}
+
+function newGame(){
+  sol=Array(81).fill(0);
+  solve(Array(81).fill(0),1,true,sol);
+  const p=sol.slice();let clues=81;
+  for(const i of shuffle([...Array(81).keys()])){
+    if(clues<=CLUES[level])break;
+    const v=p[i];p[i]=0;
+    if(solve(p.slice(),2)!==1)p[i]=v;else clues--;
+  }
+  vals=p.slice();fixed=p.map(v=>v>0);notes=Array(81).fill(0);hist=[];mistakes=0;secs=0;done=false;
+  sel=vals.findIndex(v=>!v);if(sel<0)sel=0;
+  clearInterval(timer);timer=setInterval(()=>{secs++;showTime()},1000);
+  $('#win').classList.remove('on');$('#msg').textContent='';
+  document.querySelectorAll('.levels button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.l===level));
+  render();
+}
+function showTime(){$('#time').textContent=Math.floor(secs/60)+':'+String(secs%60).padStart(2,'0')}
+
+function peers(i){return j=>j!==i&&(rowOf(i)===rowOf(j)||colOf(i)===colOf(j)||boxOf(i)===boxOf(j))}
+
+function render(){
+  const sv=vals[sel],isPeer=peers(sel);
+  let h='';
+  for(let i=0;i<81;i++){
+    const v=vals[i],bad=v&&!fixed[i]&&v!==sol[i];
+    let cls='c r'+rowOf(i)+' k'+colOf(i);
+    if(fixed[i])cls+=' g';
+    if(i===sel)cls+=' s';else if(sv&&v===sv)cls+=' s2';else if(isPeer(i))cls+=' p';
+    if(bad)cls+=' bad';
+    let inner=v||'';
+    if(!v&&notes[i]){inner='<span class="n">'+[1,2,3,4,5,6,7,8,9].map(d=>'<i>'+(notes[i]&(1<<d)?d:'')+'</i>').join('')+'</span>'}
+    h+=`<button class="${cls}" data-i="${i}" role="gridcell" aria-label="Row ${rowOf(i)+1}, column ${colOf(i)+1}, ${v?v:'empty'}">${inner}</button>`;
+  }
+  $('#board').innerHTML=h;
+  $('#miss').textContent=mistakes;showTime();
+  let p='';
+  for(let d=1;d<=9;d++){const left=9-vals.filter(v=>v===d).length;p+=`<button data-d="${d}" ${left<=0?'disabled':''}>${d}<small>${Math.max(left,0)}</small></button>`}
+  $('#pad').innerHTML=p;
+  $('#notes').setAttribute('aria-pressed',noteMode);
+}
+
+function snap(){hist.push({v:vals.slice(),n:notes.slice(),m:mistakes});if(hist.length>200)hist.shift()}
+
+function place(d){
+  if(done||fixed[sel])return;
+  if(noteMode){
+    if(vals[sel])return;
+    snap();notes[sel]^=(1<<d);render();return;
+  }
+  if(vals[sel]===d)return;
+  snap();
+  vals[sel]=d;notes[sel]=0;
+  if(d!==sol[sel]){mistakes++;$('#msg').textContent='That number doesn\u2019t belong there.'}
+  else{
+    $('#msg').textContent='';
+    const isP=peers(sel);
+    for(let j=0;j<81;j++)if(isP(j))notes[j]&=~(1<<d);
+  }
+  render();checkWin();
+}
+
+function checkWin(){
+  if(vals.every((v,i)=>v===sol[i])){
+    done=true;clearInterval(timer);
+    $('#winTxt').textContent=`${level[0].toUpperCase()+level.slice(1)} puzzle in ${$('#time').textContent} with ${mistakes} mistake${mistakes===1?'':'s'}.`;
+    $('#win').classList.add('on');
+  }
+}
+
+function erase(){
+  if(done||fixed[sel]||(!vals[sel]&&!notes[sel]))return;
+  snap();vals[sel]=0;notes[sel]=0;$('#msg').textContent='';render();
+}
+function undo(){
+  const s=hist.pop();if(!s||done)return;
+  vals=s.v;notes=s.n;mistakes=s.m;render();
+}
+function hint(){
+  if(done)return;
+  let t=sel;
+  if(fixed[t]||vals[t]===sol[t]){
+    const open=[...Array(81).keys()].filter(i=>vals[i]!==sol[i]);
+    if(!open.length)return;t=open[Math.random()*open.length|0];
+  }
+  sel=t;snap();vals[t]=sol[t];notes[t]=0;fixed[t]=true;
+  const isP=peers(t);for(let j=0;j<81;j++)if(isP(j))notes[j]&=~(1<<sol[t]);
+  $('#msg').textContent='Hint used: the cell is filled in.';
+  render();checkWin();
+}
+
+$('#board').addEventListener('click',e=>{const b=e.target.closest('.c');if(b){sel=+b.dataset.i;render();$('#board').children[sel].focus()}});
+$('#pad').addEventListener('click',e=>{const b=e.target.closest('button');if(b&&!b.disabled)place(+b.dataset.d)});
+$('#undo').onclick=undo;$('#erase').onclick=erase;$('#hint').onclick=hint;
+$('#notes').onclick=()=>{noteMode=!noteMode;render()};
+$('#new').onclick=newGame;$('#again').onclick=newGame;
+document.querySelectorAll('.levels button').forEach(b=>b.onclick=()=>{level=b.dataset.l;newGame()});
+document.addEventListener('keydown',e=>{
+  if(e.key>='1'&&e.key<='9'){place(+e.key);return}
+  const k=e.key,mv={ArrowUp:-9,ArrowDown:9,ArrowLeft:-1,ArrowRight:1};
+  if(mv[k]!==undefined){
+    e.preventDefault();
+    const r=rowOf(sel)+(k==='ArrowUp'?-1:k==='ArrowDown'?1:0),c=colOf(sel)+(k==='ArrowLeft'?-1:k==='ArrowRight'?1:0);
+    if(r>=0&&r<9&&c>=0&&c<9){sel=r*9+c;render();$('#board').children[sel].focus()}
+  }else if(k==='Backspace'||k==='Delete'||k==='0')erase();
+  else if(k==='n'||k==='N'){noteMode=!noteMode;render()}
+  else if((e.ctrlKey||e.metaKey)&&k==='z'){e.preventDefault();undo()}
+});
+newGame();
+</script>
+</body>
+</html>
